@@ -6508,6 +6508,7 @@ function HatReanimator.Start()
 		end
 	end
 	ResetHatRefs()
+	for _,v in HatRefs do if v.PH then v.PH:Destroy() end end
 	CharConn:Disconnect()
 	--replicatesignal(Player.ConnectDiedSignalBackend)
 	Reanimate.Stopping = false
