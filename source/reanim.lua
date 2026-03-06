@@ -4249,7 +4249,7 @@ function LimbReanimator.Start()
 				RootPart = Humanoid.RootPart
 				if RootPart and Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
 					Humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
-					ReanimOkay = true
+					ReanimOkay = LimbReanimator.FlingTargets[1] == nil
 				end
 			end
 		end
