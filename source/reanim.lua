@@ -7457,7 +7457,7 @@ do
 	local buttonsui = Instance.new("Frame", SCREENGUI)
 	buttonsui.BackgroundTransparency = 1
 	buttonsui.Name = Util.RandomString()
-	buttonsui.AnchorPoint = Vector2.new(1, 1)
+	buttonsui.AnchorPoint = Vector2.new(0, 0)
 	buttonsui.Position = UDim2.new(1, -90, 1, -90)
 	buttonsui.Size = UDim2.new(0, 130, 0, 130)
 	ContextActions._ButtonsGui = buttonsui
@@ -7616,9 +7616,9 @@ do
 			buttonsui.Visible = false
 			return
 		end
-		local pos = jumpButton.AbsolutePosition
+		local pos = jumpButton.AbsolutePosition - SCREENGUI.AbsolutePosition
 		buttonsui.Visible = true
-		buttonsui.Position = UDim2.fromOffset(pos.X - 35, pos.Y - 35)
+		buttonsui.Position = UDim2.fromOffset(pos.X - 35 - , pos.Y - 35)
 	end)
 end
 UserInputService.InputBegan:Connect(function(input)
