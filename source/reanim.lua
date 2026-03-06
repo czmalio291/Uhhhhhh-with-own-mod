@@ -7618,7 +7618,7 @@ do
 		end
 		local pos = jumpButton.AbsolutePosition - SCREENGUI.AbsolutePosition
 		buttonsui.Visible = true
-		buttonsui.Position = UDim2.fromOffset(pos.X - 35 - , pos.Y - 35)
+		buttonsui.Position = UDim2.fromOffset(pos.X - 35, pos.Y - 35)
 	end)
 end
 UserInputService.InputBegan:Connect(function(input)
