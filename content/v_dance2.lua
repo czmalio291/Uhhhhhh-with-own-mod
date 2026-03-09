@@ -11,7 +11,6 @@ local TextService = cloneref(game:GetService("TextService"))
 local TweenService = cloneref(game:GetService("TweenService"))
 local TextChatService = cloneref(game:GetService("TextChatService"))
 local UserInputService = cloneref(game:GetService("UserInputService"))
-local ContextActionService = cloneref(game:GetService("ContextActionService"))
 
 local Player = Players.LocalPlayer
 
@@ -679,7 +678,7 @@ AddModule(function()
 			end
 			for _,name in vegetable do
 				instances[name .. "2"] = instances[name]:Clone()
-				instances[name .. "2"].Parent = figure
+				instances[name .. "2"].Parent = vegetables
 			end
 			vegetables.Name = "miku miku oo ee oo"
 			vegetables.Parent = workspace

@@ -11,7 +11,6 @@ local TextService = cloneref(game:GetService("TextService"))
 local TweenService = cloneref(game:GetService("TweenService"))
 local TextChatService = cloneref(game:GetService("TextChatService"))
 local UserInputService = cloneref(game:GetService("UserInputService"))
-local ContextActionService = cloneref(game:GetService("ContextActionService"))
 
 local Player = Players.LocalPlayer
 

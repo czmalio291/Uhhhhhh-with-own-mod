@@ -3161,7 +3161,7 @@ do
 	local function IsInThumbstickArea(pos)
 		local playerGui = Player:FindFirstChildOfClass("PlayerGui")
 		local touchGui = playerGui and playerGui:FindFirstChild("TouchGui")
-		if not touchGui.Enabled then
+		if not touchGui or not touchGui.Enabled then
 			return false
 		end
 		local touchFrame = touchGui and touchGui:FindFirstChild("TouchControlFrame")
@@ -3176,7 +3176,7 @@ do
 	local function IsInJumpButtonArea(pos)
 		local playerGui = Player:FindFirstChildOfClass("PlayerGui")
 		local touchGui = playerGui and playerGui:FindFirstChild("TouchGui")
-		if not touchGui.Enabled then
+		if not touchGui or not touchGui.Enabled then
 			return false
 		end
 		local touchFrame = touchGui and touchGui:FindFirstChild("TouchControlFrame")
@@ -3429,11 +3429,30 @@ do
 		MobileShiftlock.Image = states[false]
 		local state = false
 		AddToRenderStep(function()
+			local playerGui = Player:FindFirstChildOfClass("PlayerGui")
+			local touchGui = playerGui and playerGui:FindFirstChild("TouchGui")
+			if not touchGui or not touchGui.Enabled then
+				MobileShiftlock.Visible = false
+				return
+			end
+			local touchFrame = touchGui and touchGui:FindFirstChild("TouchControlFrame")
+			local jumpButton = touchFrame and touchFrame:FindFirstChild("JumpButton")
+			if not jumpButton then
+				MobileShiftlock.Visible = false
+				return
+			end
 			if state ~= Reanimate.Shiftlocked then
 				state = Reanimate.Shiftlocked
 				MobileShiftlock.Image = states[state]
 			end
-			MobileShiftlock.Visible = not not (Reanimate.Character and UserInputService.TouchEnabled)
+			MobileShiftlock.Visible = not not Reanimate.Character
+			local pos = jumpButton.AbsolutePosition - SCREENGUI.AbsolutePosition
+			local size = jumpButton.AbsoluteSize
+			local ratio = 4 / 7
+			pos += Vector2.new(-size.X * (ratio + 0.2), size.Y * (1 - ratio))
+			size *= ratio
+			MobileShiftlock.Position = UDim2.fromOffset(pos.X, pos.Y)
+			MobileShiftlock.Size = UDim2.fromOffset(size.X, size.Y)
 		end)
 		MobileShiftlock.Activated:Connect(function()
 			Reanimate.Shiftlocked = Reanimate.ShiftlockEnabled and not Reanimate.Shiftlocked
@@ -4056,7 +4075,7 @@ function LimbReanimator.Start()
 			if h:GetState() ~= Enum.HumanoidStateType.Dead then
 				if false and LimbReanimator.InitMode ~= 0 and replicatesignal then
 					local a = Player:GetNetworkPing()
-					replicatesignal(Player.ConnectDiedSignalBackend)
+					--replicatesignal(Player.ConnectDiedSignalBackend)
 					local t = os.clock()
 					while h:GetState() ~= Enum.HumanoidStateType.Dead do
 						task.wait()
@@ -4072,7 +4091,7 @@ function LimbReanimator.Start()
 						h.Health = 0
 						task.delay(1, function()
 							if h:IsDescendantOf(workspace) then
-								replicatesignal(Player.ConnectDiedSignalBackend)
+								--replicatesignal(Player.ConnectDiedSignalBackend)
 								h:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
 								h:ChangeState(Enum.HumanoidStateType.Dead)
 							end
@@ -4249,7 +4268,7 @@ function LimbReanimator.Start()
 				RootPart = Humanoid.RootPart
 				if RootPart and Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
 					Humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
-					ReanimOkay = true
+					ReanimOkay = LimbReanimator.FlingTargets[1] == nil
 				end
 			end
 		end
@@ -4521,10 +4540,10 @@ function HatReanimator.Fling(target, duration)
 end
 HatReanimator.DontFireCharAddOnThisChar = nil
 function HatReanimator.Config(parent)
-	UI.CreateText(parent, "permadeath is patched, this switch is ignored", 10, Enum.TextXAlignment.Center)
+	UI.CreateText(parent, "permadeath is patched, enable this switch if you want to", 10, Enum.TextXAlignment.Center)
 	UI.CreateSwitch(parent, "Permadeath", HatReanimator.Permadeath).Changed:Connect(function(val)
-		--HatReanimator.Permadeath = val
-		--SaveData.Reanimator.HatsPatchmahub = not val
+		HatReanimator.Permadeath = val
+		SaveData.Reanimator.HatsPatchmahub = not val
 	end)
 	UI.CreateSwitch(parent, "Hat Collide", HatReanimator.HatCollide).Changed:Connect(function(val)
 		HatReanimator.HatCollide = val
@@ -4698,6 +4717,7 @@ function HatReanimator.Start()
 		elseif a:sub(1, 4) == "http" then
 			a = a:match("id=(%d+)")
 		end
+		print(a, b)
 		return a == b
 	end
 	local function ClassifyHat(hat)
@@ -4744,12 +4764,14 @@ function HatReanimator.Start()
 			for _,data in HatNameDatabase do
 				if hat.Name:lower() == data.Match:lower() then
 					mapdata.C1 = data.Offset
+					mapdata.Attachments = data.Attachments
 					return mapdata, data.For, 1
 				end
 			end
 			for _,data in HatMeshDatabase do
 				if AssetIdMatch(mesh, data.MeshId) and AssetIdMatch(tex, data.TextureId) then
 					mapdata.C1 = data.Offset
+					mapdata.Attachments = data.Attachments
 					return mapdata, data.For, 2
 				end
 			end
@@ -4809,21 +4831,15 @@ function HatReanimator.Start()
 	end
 	local function CreatePlaceholder(hat)
 		local h = hat:FindFirstChild("Handle")
-		local m = h and h:FindFirstChildOfClass("SpecialMesh")
-		if h then
-			local p = Instance.new("Part")
+		if h and h:IsA("BasePart") then
+			local p = h:Clone()
+			p:BreakJoints()
 			p.Anchored = true
 			p.CanCollide = false
 			p.CanTouch = false
 			p.CanQuery = false
 			p.Transparency = 0.75
-			p.Size = h.Size
-			p.CFrame = h.CFrame
-			p.Color = h.Color
 			p.Name = "(C) Uhhhhhh V" .. UhhhhhhVersion .. " :: HAT PLACEHOLDER"
-			local n = m:Clone()
-			n:ClearAllChildren()
-			n.Parent = p
 			p.Parent = workspace
 			return p
 		end
@@ -5039,16 +5055,25 @@ function HatReanimator.Start()
 		end
 		table.clear(hatfors.Accessories)
 		local unused = 0
+		local function AttmentGet(name)
+			for _,data in ipairs(HatMap) do
+				if data.Attachments and data.Attachments[name] then
+					return {data.Limb, data.C0 * data.C1:Inverse() * data.Attachments[name]}
+				end
+			end
+			return Attachments[name]
+		end
 		for _,v in hatfors do
 			for _,w in v do
 				local hat = w[1]
 				local map = w[2]
-				local limb, c0, c1 = "Head", Attachments.HatAttachment[2], hat.AttachmentPoint
+				local limb, c0 = unpack(AttmentGet("HatAttachment"))
+				local c1 = hat.AttachmentPoint
 				local handle = hat:FindFirstChild("Handle")
 				if handle then
 					for _,x in handle:GetChildren() do
 						if x:IsA("Attachment") then
-							local att = Attachments[x.Name]
+							local att = AttmentGet(x.Name)
 							if att then
 								limb, c0, c1 = att[1], att[2], x.CFrame
 							end
@@ -5098,8 +5123,18 @@ function HatReanimator.Start()
 					end
 				end
 				-- exact asset id
-				if data.MeshId and data.TextureId then
-					if AssetIdMatch(mesh, data.MeshId) and AssetIdMatch(tex, data.TextureId) then
+				if data.MeshId or data.TextureId or data.Name then
+					local oke = true
+					if data.MeshId then
+						oke = oke and AssetIdMatch(hatmapped.MeshId, data.MeshId)
+					end
+					if data.TextureId then
+						oke = oke and AssetIdMatch(hatmapped.TextureId, data.TextureId)
+					end
+					if data.Name then
+						oke = oke and hatmapped.Name == data.Name
+					end
+					if oke then
 						return {
 							C0 = data.C0, C1 = data.C1,
 							Offset = data.Offset or data.CFrame,
@@ -5880,7 +5915,7 @@ function HatReanimator.Start()
 				end
 			end
 		end
-		pcall(function() Player.ReplicationFocus = character end)
+		--pcall(function() Player.ReplicationFocus = character end)
 		if hatcols then
 			HatReanimator.Status.HatCollide = "Waiting for Permadeath."
 		else
@@ -5889,7 +5924,7 @@ function HatReanimator.Start()
 		local cdsbeffect = os.clock()
 		local cdsbtime = os.clock()
 		if perma then
-			replicatesignal(Player.ConnectDiedSignalBackend)
+			--replicatesignal(Player.ConnectDiedSignalBackend)
 			HatReanimator.Status.Permadeath = "Fired CDSB Signal."
 			cdsbeffect += Players.RespawnTime
 		end
@@ -6123,7 +6158,7 @@ function HatReanimator.Start()
 				NumHats = #CharHats
 			end
 		end
-		pcall(function() Player.ReplicationFocus = nil end)
+		--pcall(function() Player.ReplicationFocus = nil end)
 		CurrentCharacter = character
 	end
 
@@ -6136,7 +6171,7 @@ function HatReanimator.Start()
 			pcall(function() Player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Dead) end)
 			pcall(function() Player.Character.Humanoid.Health = 0 end)
 			pcall(replicatesignal, Player.Character.Humanoid.ServerBreakJoints)
-			pcall(replicatesignal, Player.ConnectDiedSignalBackend)
+			--pcall(replicatesignal, Player.ConnectDiedSignalBackend)
 			Player.Character.DescendantAdded:Connect(CharOnDesc)
 			for _,v in Player.Character:GetDescendants() do
 				CharOnDesc(v)
@@ -6503,6 +6538,7 @@ function HatReanimator.Start()
 		end
 	end
 	ResetHatRefs()
+	for _,v in HatRefs do if v.PH then v.PH:Destroy() end end
 	CharConn:Disconnect()
 	--replicatesignal(Player.ConnectDiedSignalBackend)
 	Reanimate.Stopping = false
@@ -7275,40 +7311,6 @@ TextChatService.MessageReceived:Connect(function(message)
 end)
 task.wait()
 
-local function GiveFunctionsToFunction(func)
-	local env = b_getfenv(func)
-	env.RandomString = Util.RandomString
-	env.Util_CreateText = UI.CreateText
-	env.Util_CreateButton = UI.CreateButton
-	env.Util_CreateSwitch = UI.CreateSwitch
-	env.Util_CreateTextbox = UI.CreateTextbox
-	env.Util_CreateSlider = UI.CreateSlider
-	env.Util_CreateDropdown = UI.CreateDropdown
-	env.Util_CreateCanvas = UI.CreateCanvas
-	env.Util_CreateScrollCanvas = UI.CreateScrollCanvas
-	env.Util_CreateSeparator = UI.CreateSeparator
-	env.ReanimCamera = Reanimate.Camera
-	env.LimbReanimator = LimbReanimator
-	env.HatReanimator = HatReanimator
-	env.ReanimateShowHitboxes = ReanimateShowHitboxes
-	env.ReanimateFling = ReanimateFling
-	env.SetOverrideMovesetMusic = SetOverrideMovesetMusic
-	env.GetOverrideMovesetMusicTime = GetOverrideMovesetMusicTime
-	env.SetOverrideMovesetMusicTime = SetOverrideMovesetMusicTime
-	env.SetOverrideMovesetMusicSpeed = SetOverrideMovesetMusicSpeed
-	env.SetOverrideDanceMusic = SetOverrideDanceMusic
-	env.GetOverrideDanceMusicTime = GetOverrideDanceMusicTime
-	env.SetOverrideDanceMusicTime = SetOverrideDanceMusicTime
-	env.SetOverrideDanceMusicSpeed = SetOverrideDanceMusicSpeed
-	env.AnimLib = AnimLib
-	env.AssetGetPathFromFilename = AssetGetPathFromFilename
-	env.AssetGetContentId = AssetGetContentId
-	env.ProtectedChat = ProtectedChat
-	env.OnPlayerChatted = OnPlayerChatted
-	env.HiddenGui = SCREENGUI
-	env.FallenPartsDestroyHeight = FallenPartsDestroyHeight
-end
-
 local MovementStyles = {}
 local DanceableDances = {}
 
@@ -7426,10 +7428,12 @@ local function HandleKeybind(key)
 	if table.find(KeybindsPerPage, key) then
 		if CurrentDance then
 			CurrentDance = nil
+			return true
 		else
 			CurrentDance = Keybinds[key]
 			if CurrentDance then
 				Util.Notify(key .. " - " .. CurrentDance.Name)
+				return true
 			end
 		end
 	end
@@ -7438,7 +7442,9 @@ local function HandleKeybind(key)
 		KeybindPaging = (KeybindPaging + 1) % pages
 		Util.Notify("Page " .. (KeybindPaging + 1))
 		RefreshKeybinds()
+		return true
 	end
+	return false
 end
 RefreshKeybinds = function()
 	local pages = math.max(1, 1 + ((#DanceableDances - 1) // #KeybindsPerPage))
@@ -7463,16 +7469,230 @@ RefreshKeybinds = function()
 		end
 	end
 end
-UserInputService.InputBegan:Connect(function(input, typing)
-	if not SaveData.KeybindsEnabled then return end
-	if typing then return end
-	if input.UserInputType == Enum.UserInputType.Keyboard then
-		HandleKeybind(input.KeyCode.Name)
+local ContextActions = {}
+ContextActions._Actions = {}
+ContextActions._ActionsMap = {}
+do
+	local buttonsui = Instance.new("Frame", SCREENGUI)
+	buttonsui.BackgroundTransparency = 1
+	buttonsui.Name = Util.RandomString()
+	buttonsui.AnchorPoint = Vector2.new(0, 0)
+	buttonsui.Position = UDim2.new(1, -90, 1, -90)
+	buttonsui.Size = UDim2.new(0, 130, 0, 130)
+	ContextActions._ButtonsGui = buttonsui
+	local actions, actionsmap = ContextActions._Actions, ContextActions._ActionsMap
+	function ContextActions:RunBinding(caac, input)
+		local s, result = xpcall(caac.Callback, function(m)
+			warn(debug.traceback("Uhhhhhh :: Custom ContextActions Error - " .. m))
+		end, caac.Name, input.UserInputState, input)
+		if s then
+			if result == Enum.ContextActionResult.Sink then
+				return true
+			end
+		end
+		return false
 	end
+	function ContextActions:OnInput(input)
+		for i=#actions, 1, -1 do
+			local caac = actions[i]
+			local exec = false
+			for _,v in caac.Inputs do
+				if v == input.UserInputType then
+					exec = true
+					break
+				end
+				if input.UserInputType == Enum.UserInputType.Keyboard then
+					if v == input.KeyCode then
+						exec = true
+						break
+					end
+				end
+			end
+			if exec then
+				if ContextActions:RunBinding(caac, input) then return end
+			end
+		end
+	end
+	function ContextActions:UnbindAllActions()
+		table.clear(actions)
+		table.clear(actionsmap)
+		ContextActions._ButtonsGui:ClearAllChildren()
+	end
+	function ContextActions:BindAction(name, callback, touchButton, ...)
+		assert(type(name) == "string")
+		assert(type(callback) == "function")
+		assert(type(touchButton) == "boolean")
+		ContextActions:UnbindAction(name)
+		local caac = {
+			Name = name,
+			Callback = callback,
+			Inputs = {...}
+		}
+		table.insert(actions, caac)
+		actionsmap[name] = caac
+		if touchButton then
+			local button = Instance.new("ImageButton", buttonsui)
+			button.Name = Util.RandomString()
+			button.Position = UDim2.new(0, 0, 0, 0)
+			button.Size = UDim2.new(0, 35, 0, 35)
+			button.Image = "https://www.roblox.com/asset/?id=97166444"
+			button.BackgroundTransparency = 1
+			local txt = Instance.new("TextLabel", button)
+			txt.Name = "Title"
+			txt.Position = UDim2.new(0, 0, 0, 0)
+			txt.Size = UDim2.new(1, 0, 1, 0)
+			txt.BackgroundTransparency = 1
+			txt.Font = Enum.Font.SourceSansBold
+			txt.TextSize = 18
+			txt.TextColor3 = Color3.new(1, 1, 1)
+			txt.TextStrokeTransparency = 0
+			txt.TextStrokeColor3 = Color3.new(0, 0, 0)
+			txt.Text = ""
+			local icon = Instance.new("ImageLabel", button)
+			icon.Name = "Icon"
+			icon.Position = UDim2.new(0, 0, 0, 0)
+			icon.Size = UDim2.new(1, 0, 1, 0)
+			icon.BackgroundTransparency = 1
+			icon.Image = ""
+			button.InputBegan:Connect(function(input)
+				ContextActions:RunBinding(caac, input)
+			end)
+			button.InputChanged:Connect(function(input)
+				ContextActions:RunBinding(caac, input)
+			end)
+			button.InputEnded:Connect(function(input)
+				ContextActions:RunBinding(caac, input)
+			end)
+			caac.TouchButton = button
+		end
+	end
+	function ContextActions:UnbindAction(name)
+		local caac = actionsmap[name]
+		if caac then
+			if caac.TouchButton then
+				caac.TouchButton:Destroy()
+			end
+			local i = table.find(actions, caac)
+			if i then table.remove(actions, i) end
+		end
+	end
+	function ContextActions:SetTitle(name, title)
+		local caac = actionsmap[name]
+		if caac then
+			local button = caac.TouchButton
+			if button then
+				if button.Icon.Image == "" then
+					button.Title.Visible = true
+					button.Icon.Visible = false
+				else
+					button.Title.Visible = true
+					button.Icon.Visible = false
+				end
+				button.Title.Text = title
+			end
+		end
+	end
+	function ContextActions:SetImage(name, image)
+		local caac = actionsmap[name]
+		if caac then
+			local button = caac.TouchButton
+			if button then
+				if image then
+					button.Icon.Image = image
+				else
+					button.Icon.Image = ""
+				end
+				if button.Icon.Image == "" then
+					button.Title.Visible = true
+					button.Icon.Visible = false
+				else
+					button.Title.Visible = true
+					button.Icon.Visible = false
+				end
+			end
+		end
+	end
+	function ContextActions:SetPosition(name, position)
+		local caac = actionsmap[name]
+		if caac then
+			local button = caac.TouchButton
+			if button then
+				button.Position = position
+			end
+		end
+	end
+	AddToRenderStep(function()
+		local playerGui = Player:FindFirstChildOfClass("PlayerGui")
+		local touchGui = playerGui and playerGui:FindFirstChild("TouchGui")
+		if not touchGui or not touchGui.Enabled then
+			buttonsui.Visible = false
+			return
+		end
+		local touchFrame = touchGui and touchGui:FindFirstChild("TouchControlFrame")
+		local jumpButton = touchFrame and touchFrame:FindFirstChild("JumpButton")
+		if not jumpButton then
+			buttonsui.Visible = false
+			return
+		end
+		local pos = jumpButton.AbsolutePosition - SCREENGUI.AbsolutePosition
+		buttonsui.Visible = true
+		buttonsui.Position = UDim2.fromOffset(pos.X - 35, pos.Y - 35)
+	end)
+end
+UserInputService.InputBegan:Connect(function(input)
+	if UserInputService:GetFocusedTextBox() then return end
+	if SaveData.KeybindsEnabled then
+		if input.UserInputType == Enum.UserInputType.Keyboard then
+			if HandleKeybind(input.KeyCode.Name) then return end
+		end
+	end
+	ContextActions:OnInput(input)
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if UserInputService:GetFocusedTextBox() then return end
+	ContextActions:OnInput(input)
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if UserInputService:GetFocusedTextBox() then return end
+	ContextActions:OnInput(input)
 end)
 
 if type(SaveData.ModuleConfigs) ~= "table" then
 	SaveData.ModuleConfigs = {}
+end
+local function GiveFunctionsToFunction(func)
+	local env = b_getfenv(func)
+	env.RandomString = Util.RandomString
+	env.Util_CreateText = UI.CreateText
+	env.Util_CreateButton = UI.CreateButton
+	env.Util_CreateSwitch = UI.CreateSwitch
+	env.Util_CreateTextbox = UI.CreateTextbox
+	env.Util_CreateSlider = UI.CreateSlider
+	env.Util_CreateDropdown = UI.CreateDropdown
+	env.Util_CreateCanvas = UI.CreateCanvas
+	env.Util_CreateScrollCanvas = UI.CreateScrollCanvas
+	env.Util_CreateSeparator = UI.CreateSeparator
+	env.ReanimCamera = Reanimate.Camera
+	env.LimbReanimator = LimbReanimator
+	env.HatReanimator = HatReanimator
+	env.ReanimateShowHitboxes = ReanimateShowHitboxes
+	env.ReanimateFling = ReanimateFling
+	env.SetOverrideMovesetMusic = SetOverrideMovesetMusic
+	env.GetOverrideMovesetMusicTime = GetOverrideMovesetMusicTime
+	env.SetOverrideMovesetMusicTime = SetOverrideMovesetMusicTime
+	env.SetOverrideMovesetMusicSpeed = SetOverrideMovesetMusicSpeed
+	env.SetOverrideDanceMusic = SetOverrideDanceMusic
+	env.GetOverrideDanceMusicTime = GetOverrideDanceMusicTime
+	env.SetOverrideDanceMusicTime = SetOverrideDanceMusicTime
+	env.SetOverrideDanceMusicSpeed = SetOverrideDanceMusicSpeed
+	env.AnimLib = AnimLib
+	env.ContextActions = ContextActions
+	env.AssetGetPathFromFilename = AssetGetPathFromFilename
+	env.AssetGetContentId = AssetGetContentId
+	env.ProtectedChat = ProtectedChat
+	env.OnPlayerChatted = OnPlayerChatted
+	env.HiddenGui = SCREENGUI
+	env.FallenPartsDestroyHeight = FallenPartsDestroyHeight
 end
 local function GetModuleHash(m)
 	if m.Hash then return m.Hash end

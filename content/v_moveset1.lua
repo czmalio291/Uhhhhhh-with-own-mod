@@ -11,7 +11,6 @@ local TextService = cloneref(game:GetService("TextService"))
 local TweenService = cloneref(game:GetService("TweenService"))
 local TextChatService = cloneref(game:GetService("TextChatService"))
 local UserInputService = cloneref(game:GetService("UserInputService"))
-local ContextActionService = cloneref(game:GetService("ContextActionService"))
 
 local Player = Players.LocalPlayer
 
@@ -932,13 +931,13 @@ AddModule(function()
 		animator.rig = figure
 		animator.track = track
 		dodgetick = 0
-		ContextActionService:BindAction("Uhhhhhh_SansDodge", function(actName, state, input)
+		ContextActions:BindAction("Uhhhhhh_SansDodge", function(actName, state, input)
 			if state == Enum.UserInputState.Begin then
 				dodgetick = os.clock()
 			end
 		end, true, Enum.KeyCode.Q)
-		ContextActionService:SetTitle("Uhhhhhh_SansDodge", "Dodge")
-		ContextActionService:SetPosition("Uhhhhhh_SansDodge", UDim2.new(1, -130, 1, -130))
+		ContextActions:SetTitle("Uhhhhhh_SansDodge", "Dodge")
+		ContextActions:SetPosition("Uhhhhhh_SansDodge", UDim2.new(1, -130, 1, -130))
 	end
 	m.Update = function(dt: number, figure: Model)
 		local t = os.clock()
@@ -962,7 +961,7 @@ AddModule(function()
 	end
 	m.Destroy = function(figure: Model?)
 		animator = nil
-		ContextActionService:UnbindAction("Uhhhhhh_SansDodge")
+		ContextActions:UnbindAction("Uhhhhhh_SansDodge")
 	end
 	return m
 end)
@@ -1071,7 +1070,7 @@ AddModule(function()
 		animationtime = 0
 		laststate = "none"
 		sprinting = false
-		ContextActionService:BindAction("Uhhhhhh_KDRV3Sprint", function(actName, state, input)
+		ContextActions:BindAction("Uhhhhhh_KDRV3Sprint", function(actName, state, input)
 			if state == Enum.UserInputState.Begin then
 				sprinting = not sprinting
 				if sprinting and not persistentloadnotif then
@@ -1084,8 +1083,8 @@ AddModule(function()
 				end
 			end
 		end, true, Enum.KeyCode.LeftControl)
-		ContextActionService:SetTitle("Uhhhhhh_KDRV3Sprint", "Ctrl")
-		ContextActionService:SetPosition("Uhhhhhh_KDRV3Sprint", UDim2.new(1, -130, 1, -130))
+		ContextActions:SetTitle("Uhhhhhh_KDRV3Sprint", "Ctrl")
+		ContextActions:SetPosition("Uhhhhhh_KDRV3Sprint", UDim2.new(1, -130, 1, -130))
 	end
 	m.Update = function(dt: number, figure: Model)
 		local t = os.clock()
@@ -1157,7 +1156,7 @@ AddModule(function()
 		animatoridle = nil
 		animatorwalk = nil
 		animatorspri = nil
-		ContextActionService:UnbindAction("Uhhhhhh_KDRV3Sprint")
+		ContextActions:UnbindAction("Uhhhhhh_KDRV3Sprint")
 	end
 	return m
 end)
